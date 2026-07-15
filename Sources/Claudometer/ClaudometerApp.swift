@@ -29,6 +29,16 @@ struct ClaudometerApp: App {
                 }
             }
             Button("Refresh") { monitor.refresh() }
+            Menu("Affichage") {
+                Picker("Quotas", selection: $monitor.windowChoice) {
+                    ForEach(UsageMonitor.WindowChoice.allCases, id: \.self) { choice in
+                        Text(choice.label).tag(choice)
+                    }
+                }
+                Divider()
+                Toggle("Nom des quotas (5h/7d)", isOn: $monitor.showLabels)
+                Toggle("Symbole %", isOn: $monitor.showPercent)
+            }
             // SMAppService only works from a bundled .app; hidden under `swift run`.
             if Bundle.main.bundleIdentifier != nil {
                 Toggle("Launch at Login", isOn: $launchAtLogin)

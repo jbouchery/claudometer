@@ -19,6 +19,12 @@ The menu bar shows both rate-limit windows permanently: `5h 46% · 7d 12%`.
 Numbers refresh every 60 seconds. Open the menu for details — exact
 percentages, when each window resets, and which account is being tracked.
 
+The display is configurable (menu → Affichage): show one window or both
+(`5h et 7d` / `5h seulement` / `7d seulement`), with or without window names,
+with or without the `%` symbol — down to a minimal `46`. A `!` marks a
+saturated window in every format, and a hidden window forces its way back
+into the menu bar (with its name) when it saturates, so you can't miss it.
+
 ### Follows your active account
 
 Switch accounts with `/login` in any terminal and Claudometer follows

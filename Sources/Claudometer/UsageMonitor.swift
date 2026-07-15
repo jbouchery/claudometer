@@ -76,6 +76,29 @@ final class UsageMonitor: ObservableObject {
     @Published var fiveHourDetail = "–"
     @Published var sevenDayDetail = "–"
     @Published var errorMessage: String?
+    enum WindowChoice: String, CaseIterable {
+        case both, fiveHour, sevenDay
+
+        var label: String {
+            switch self {
+            case .both: return "5h et 7d"
+            case .fiveHour: return "5h seulement"
+            case .sevenDay: return "7d seulement"
+            }
+        }
+    }
+
+    // Three independent display settings, each persisted. A hidden window forces its way
+    // back into the menu bar when saturated (always labelled, so the intrusion is readable).
+    @Published var showLabels = (UserDefaults.standard.object(forKey: "showLabels") as? Bool) ?? true {
+        didSet { UserDefaults.standard.set(showLabels, forKey: "showLabels"); applyDisplay(now: Date()) }
+    }
+    @Published var showPercent = (UserDefaults.standard.object(forKey: "showPercent") as? Bool) ?? true {
+        didSet { UserDefaults.standard.set(showPercent, forKey: "showPercent"); applyDisplay(now: Date()) }
+    }
+    @Published var windowChoice = WindowChoice(rawValue: UserDefaults.standard.string(forKey: "windowChoice") ?? "") ?? .both {
+        didSet { UserDefaults.standard.set(windowChoice.rawValue, forKey: "windowChoice"); applyDisplay(now: Date()) }
+    }
 
     private var usageTimer: Timer?
     private var resetTimers: [Window: Timer] = [:]
@@ -202,14 +225,14 @@ final class UsageMonitor: ObservableObject {
     private func applyDisplay(now: Date) {
         guard accountUuid != nil else {
             errorMessage = "Aucun compte Claude Code détecté -- lancez `claude` dans un terminal"
-            menuBarText = "5h – · 7d –"
+            menuBarText = renderPlaceholder()
             fiveHourDetail = "–"
             sevenDayDetail = "–"
             return
         }
         guard state.fiveHour != nil || state.sevenDay != nil else {
             errorMessage = "En attente d'une session Claude Code active"
-            menuBarText = "5h – · 7d –"
+            menuBarText = renderPlaceholder()
             fiveHourDetail = "–"
             sevenDayDetail = "–"
             return
@@ -219,13 +242,44 @@ final class UsageMonitor: ObservableObject {
         let stale = isStale(now: now)
         let fivePct = state.fiveHour?.utilization ?? 0
         let weekPct = state.sevenDay?.utilization ?? 0
-        // Text-only, compact: "!" marks a saturated window, a trailing "(12m)" is the data's
-        // age when stale -- refreshed every 60s by the poll timer even when polls fail.
-        let five = "5h \(Int(fivePct))%\(fivePct >= EvaluateConstants.saturationThreshold ? "!" : "")"
-        let week = "7d \(Int(weekPct))%\(weekPct >= EvaluateConstants.saturationThreshold ? "!" : "")"
-        menuBarText = "\(five) · \(week)\(stale ? " (\(age(now: now)))" : "")"
+        // Text-only: "!" marks a saturated window, a trailing "(12m)" is the data's age when
+        // stale -- refreshed every 60s by the poll timer even when polls fail.
+        let saturated5 = fivePct >= EvaluateConstants.saturationThreshold
+        let saturated7 = weekPct >= EvaluateConstants.saturationThreshold
+
+        var parts: [String] = []
+        if windowChoice != .sevenDay {
+            parts.append(render(pct: fivePct, label: "5h", saturated: saturated5, forceLabel: false))
+        }
+        if windowChoice != .fiveHour {
+            parts.append(render(pct: weekPct, label: "7d", saturated: saturated7, forceLabel: false))
+        }
+        // A hidden window forces its way back in when saturated (always labelled so the
+        // intrusion is readable) -- otherwise its only trace would be the one-shot notification.
+        if windowChoice == .fiveHour, saturated7 {
+            parts.append(render(pct: weekPct, label: "7d", saturated: true, forceLabel: true))
+        }
+        if windowChoice == .sevenDay, saturated5 {
+            parts.insert(render(pct: fivePct, label: "5h", saturated: true, forceLabel: true), at: 0)
+        }
+
+        let ageSuffix = stale ? " (\(age(now: now)))" : ""
+        menuBarText = parts.joined(separator: " · ") + ageSuffix
         fiveHourDetail = "\(Int(fivePct))% (resets \(formatted(state.fiveHour?.resetsAt)))\(stalenessSuffix(now: now))"
         sevenDayDetail = "\(Int(weekPct))% (resets \(formatted(state.sevenDay?.resetsAt)))"
+    }
+
+    private func render(pct: Double, label: String, saturated: Bool, forceLabel: Bool) -> String {
+        let prefix = (showLabels || forceLabel) ? "\(label) " : ""
+        let suffix = showPercent ? "%" : ""
+        return "\(prefix)\(Int(pct))\(suffix)\(saturated ? "!" : "")"
+    }
+
+    private func renderPlaceholder() -> String {
+        var parts: [String] = []
+        if windowChoice != .sevenDay { parts.append(showLabels ? "5h –" : "–") }
+        if windowChoice != .fiveHour { parts.append(showLabels ? "7d –" : "–") }
+        return parts.joined(separator: " · ")
     }
 
     private func isStale(now: Date) -> Bool {
