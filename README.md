@@ -63,21 +63,32 @@ numbers are back.
 Quota reset at 3am while the lid was closed? On wake, the display updates
 silently — no avalanche of outdated notifications after a weekend away.
 
+### Launch at Login
+
+Tick "Launch at Login" in the menu and Claudometer starts with your session
+(native `SMAppService` — it also shows up in System Settings → General →
+Login Items, so you stay in control).
+
 ## Install
 
 Requires macOS 13+ and Xcode Command Line Tools (Swift 5.9+) to build.
 
 ```sh
 ./scripts/build-app.sh
-open Claudometer.app
+cp -R Claudometer.app /Applications/
+open /Applications/Claudometer.app
 ```
 
 First launch of an unsigned app: right-click → Open (once), or
-`xattr -d com.apple.quarantine Claudometer.app`.
+`xattr -d com.apple.quarantine /Applications/Claudometer.app`.
 
-For development, `swift run Claudometer` works too (notifications are
-disabled outside a proper .app bundle). `swift run EvaluateCheck` runs the
-logic self-checks.
+Install to `/Applications` before enabling Launch at Login: macOS registers
+the app by path, and the copy inside the repo is destroyed and rebuilt by
+every `build-app.sh` run.
+
+For development, `swift run Claudometer` works too (notifications and the
+login item are disabled outside a proper .app bundle). `swift run
+EvaluateCheck` runs the logic self-checks.
 
 ## How it works — and what it never does
 
