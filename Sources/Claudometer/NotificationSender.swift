@@ -25,12 +25,12 @@ enum NotificationSender {
     }
 
     private static func message(for alert: Alert) -> String {
-        let windowLabel = alert.window == .fiveHour ? "5h" : "7 jours"
+        let windowLabel = alert.window == .fiveHour ? "5h" : "7-day"
         switch alert.kind {
         case .saturation:
-            return "Quota \(windowLabel) proche de la limite (90%)"
+            return "\(windowLabel) quota is near its limit (90%)"
         case .freed:
-            return "Quota \(windowLabel) de nouveau disponible"
+            return "\(windowLabel) quota is available again"
         }
     }
 }

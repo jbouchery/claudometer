@@ -8,6 +8,7 @@ import Foundation
 final class UpdateChecker: ObservableObject {
     @Published var availableVersion: String?
 
+    static let repoURL = URL(string: "https://github.com/jbouchery/claudometer")!
     static let releasesURL = URL(string: "https://github.com/jbouchery/claudometer/releases/latest")!
     private let latestAPI = URL(string: "https://api.github.com/repos/jbouchery/claudometer/releases/latest")!
     private var timer: Timer?

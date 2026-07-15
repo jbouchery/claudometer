@@ -11,8 +11,14 @@ struct ClaudometerApp: App {
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 
+    private var appVersion: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "dev"
+    }
+
     var body: some Scene {
-        MenuBarExtra(monitor.menuBarText) {
+        MenuBarExtra {
+            Text("Claudometer")
+            Divider()
             if let account = monitor.accountLabel {
                 Text("Account: \(account)")
             }
@@ -24,20 +30,20 @@ struct ClaudometerApp: App {
             }
             Divider()
             if let version = updater.availableVersion {
-                Button("Mise à jour disponible → \(version)") {
+                Button("Update available → \(version)") {
                     NSWorkspace.shared.open(UpdateChecker.releasesURL)
                 }
             }
             Button("Refresh") { monitor.refresh() }
-            Menu("Affichage") {
-                Picker("Quotas", selection: $monitor.windowChoice) {
+            Menu("Display") {
+                Picker("Windows", selection: $monitor.windowChoice) {
                     ForEach(UsageMonitor.WindowChoice.allCases, id: \.self) { choice in
                         Text(choice.label).tag(choice)
                     }
                 }
                 Divider()
-                Toggle("Nom des quotas (5h/7d)", isOn: $monitor.showLabels)
-                Toggle("Symbole %", isOn: $monitor.showPercent)
+                Toggle("Window names (5h/7d)", isOn: $monitor.showLabels)
+                Toggle("% symbol", isOn: $monitor.showPercent)
             }
             // SMAppService only works from a bundled .app; hidden under `swift run`.
             if Bundle.main.bundleIdentifier != nil {
@@ -54,7 +60,18 @@ struct ClaudometerApp: App {
                         }
                     }
             }
+            Menu("Help") {
+                Text(updater.availableVersion == nil
+                     ? "Claudometer \(appVersion) — up to date"
+                     : "Claudometer \(appVersion) — v\(updater.availableVersion!) available")
+                Divider()
+                Button("Check for updates") { updater.check() }
+                Button("Open GitHub repo") { NSWorkspace.shared.open(UpdateChecker.repoURL) }
+            }
             Button("Quit") { NSApplication.shared.terminate(nil) }
+        } label: {
+            Text(monitor.menuBarText)
+                .help("Claudometer")
         }
     }
 }

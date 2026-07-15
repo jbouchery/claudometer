@@ -81,9 +81,9 @@ final class UsageMonitor: ObservableObject {
 
         var label: String {
             switch self {
-            case .both: return "5h et 7d"
-            case .fiveHour: return "5h seulement"
-            case .sevenDay: return "7d seulement"
+            case .both: return "5h and 7d"
+            case .fiveHour: return "5h only"
+            case .sevenDay: return "7d only"
             }
         }
     }
@@ -224,14 +224,14 @@ final class UsageMonitor: ObservableObject {
 
     private func applyDisplay(now: Date) {
         guard accountUuid != nil else {
-            errorMessage = "Aucun compte Claude Code détecté -- lancez `claude` dans un terminal"
+            errorMessage = "No Claude Code login detected -- run `claude` in a terminal"
             menuBarText = renderPlaceholder()
             fiveHourDetail = "–"
             sevenDayDetail = "–"
             return
         }
         guard state.fiveHour != nil || state.sevenDay != nil else {
-            errorMessage = "En attente d'une session Claude Code active"
+            errorMessage = "Waiting for an active Claude Code session"
             menuBarText = renderPlaceholder()
             fiveHourDetail = "–"
             sevenDayDetail = "–"
@@ -289,17 +289,17 @@ final class UsageMonitor: ObservableObject {
 
     private func stalenessSuffix(now: Date) -> String {
         guard state.lastPolledAt != nil, isStale(now: now) else { return "" }
-        return " -- maj il y a \(age(now: now))"
+        return " -- updated \(age(now: now)) ago"
     }
 
-    /// Compact age of the last successful poll: "3m", "2h", "1j".
+    /// Compact age of the last successful poll: "3m", "2h", "1d".
     private func age(now: Date) -> String {
         guard let lastPolledAt = state.lastPolledAt else { return "?" }
         let minutes = max(1, Int(now.timeIntervalSince(lastPolledAt) / 60))
         if minutes < 60 { return "\(minutes)m" }
         let hours = minutes / 60
         if hours < 24 { return "\(hours)h" }
-        return "\(hours / 24)j"
+        return "\(hours / 24)d"
     }
 
     /// Schedules a one-shot timer per window at its known resetsAt, so the freed-quota alert

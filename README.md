@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon.png" width="128" alt="Claudometer"></p>
+
 # Claudometer
 
 A tiny macOS menu bar app that keeps an eye on your Claude Code plan usage —

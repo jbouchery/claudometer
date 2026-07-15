@@ -15,5 +15,10 @@ for s in 16 32 128 256 512; do
 done
 
 iconutil -c icns "$ICONSET" -o AppIcon.icns
+
+# PNG for the README / GitHub.
+mkdir -p assets
+sips -z 256 256 "$TMP/icon_1024.png" --out assets/icon.png > /dev/null
+
 rm -rf "$TMP"
-echo "Built AppIcon.icns"
+echo "Built AppIcon.icns and assets/icon.png"
