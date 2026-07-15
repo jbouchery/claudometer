@@ -8,8 +8,9 @@ swift build -c release
 
 APP=Claudometer.app
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Claudometer "$APP/Contents/MacOS/Claudometer"
+cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -22,6 +23,8 @@ cat > "$APP/Contents/Info.plist" << EOF
     <string>com.claudometer.app</string>
     <key>CFBundleName</key>
     <string>Claudometer</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleShortVersionString</key>
     <string>${VERSION}</string>
     <key>CFBundlePackageType</key>
