@@ -71,16 +71,25 @@ Login Items, so you stay in control).
 
 ## Install
 
-Requires macOS 13+ and Xcode Command Line Tools (Swift 5.9+) to build.
+### From a release
+
+Grab `Claudometer-x.y.z.zip` from the
+[latest release](https://github.com/jbouchery/claudometer/releases/latest),
+unzip, move `Claudometer.app` to `/Applications`, open it.
+
+The app is ad-hoc signed but not notarized (no paid Apple Developer
+account), so the first launch needs: right-click → Open (once), or
+`xattr -d com.apple.quarantine /Applications/Claudometer.app`.
+
+### From source
+
+Requires macOS 13+ and Xcode Command Line Tools (Swift 5.9+).
 
 ```sh
-./scripts/build-app.sh
+./scripts/build-app.sh          # builds, signs (ad-hoc), zips
 cp -R Claudometer.app /Applications/
 open /Applications/Claudometer.app
 ```
-
-First launch of an unsigned app: right-click → Open (once), or
-`xattr -d com.apple.quarantine /Applications/Claudometer.app`.
 
 Install to `/Applications` before enabling Launch at Login: macOS registers
 the app by path, and the copy inside the repo is destroyed and rebuilt by

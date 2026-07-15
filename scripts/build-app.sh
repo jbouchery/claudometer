@@ -2,6 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+VERSION="${1:-0.1.0}"
+
 swift build -c release
 
 APP=Claudometer.app
@@ -9,7 +11,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp .build/release/Claudometer "$APP/Contents/MacOS/Claudometer"
 
-cat > "$APP/Contents/Info.plist" << 'EOF'
+cat > "$APP/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -21,7 +23,7 @@ cat > "$APP/Contents/Info.plist" << 'EOF'
     <key>CFBundleName</key>
     <string>Claudometer</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>${VERSION}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSUIElement</key>
@@ -34,4 +36,12 @@ cat > "$APP/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-echo "Built $APP"
+# Ad-hoc signature: no identity, but seals the bundle so macOS sees the same app
+# across rebuilds (permissions, login item) and satisfies the ARM64 signed-code rule.
+codesign --force --sign - "$APP"
+
+ZIP="Claudometer-${VERSION}.zip"
+rm -f Claudometer-*.zip
+ditto -c -k --keepParent "$APP" "$ZIP"
+
+echo "Built $APP ($VERSION) and $ZIP"
