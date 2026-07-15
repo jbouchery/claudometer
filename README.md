@@ -63,6 +63,13 @@ numbers are back.
 Quota reset at 3am while the lid was closed? On wake, the display updates
 silently — no avalanche of outdated notifications after a weekend away.
 
+### Update notice
+
+Once a day Claudometer checks the latest GitHub release (public API, no
+tracking) and shows an "Update available" menu item linking to the release
+page when a newer version exists. No auto-update — an unsigned app can't
+replace itself gracefully, so updating stays a two-click affair.
+
 ### Launch at Login
 
 Tick "Launch at Login" in the menu and Claudometer starts with your session

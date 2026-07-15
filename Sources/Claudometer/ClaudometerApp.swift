@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct ClaudometerApp: App {
     @StateObject private var monitor = UsageMonitor()
+    @StateObject private var updater = UpdateChecker()
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     init() {
@@ -22,6 +23,11 @@ struct ClaudometerApp: App {
                 Text("7d usage: \(monitor.sevenDayDetail)")
             }
             Divider()
+            if let version = updater.availableVersion {
+                Button("Mise à jour disponible → \(version)") {
+                    NSWorkspace.shared.open(UpdateChecker.releasesURL)
+                }
+            }
             Button("Refresh") { monitor.refresh() }
             // SMAppService only works from a bundled .app; hidden under `swift run`.
             if Bundle.main.bundleIdentifier != nil {
