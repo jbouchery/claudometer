@@ -3,9 +3,10 @@
 *.xcodeproj
 .DS_Store
 /Claudometer.app
+/Claudometer-*.zip
 
 # Internal working docs -- not part of the public repo
 /CONTEXT.md
-/docs/
+/docs/ROADMAP.md
+/docs/adr/
 /.claude/
-/Claudometer-*.zip

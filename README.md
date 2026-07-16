@@ -1,104 +1,40 @@
 <p align="center"><img src="assets/icon.png" width="128" alt="Claudometer"></p>
 
-# Claudometer
+<h1 align="center">Claudometer</h1>
 
-A tiny macOS menu bar app that keeps an eye on your Claude Code plan usage —
-the 5-hour and 7-day rate-limit windows — so you know where you stand before
-you hit a limit, and get told the moment a saturated quota frees up.
+<p align="center"><b>Your Claude Code plan usage, always visible in the macOS menu bar.</b></p>
 
-```
-5h 46% · 7d 12%
-```
+<p align="center"><code>5h 46% · 7d 12%</code></p>
 
-No login, no configuration, no account setup: if Claude Code works in your
-terminal, Claudometer works in your menu bar.
-
-## Features
-
-### Live usage at a glance
-
-The menu bar shows both rate-limit windows permanently: `5h 46% · 7d 12%`.
-Numbers refresh every 60 seconds. Open the menu for details — exact
-percentages, when each window resets, and which account is being tracked.
-
-The display is configurable (menu → Affichage): show one window or both
-(`5h et 7d` / `5h seulement` / `7d seulement`), with or without window names,
-with or without the `%` symbol — down to a minimal `46`. A `!` marks a
-saturated window in every format, and a hidden window forces its way back
-into the menu bar (with its name) when it saturates, so you can't miss it.
-
-### Follows your active account
-
-Switch accounts with `/login` in any terminal and Claudometer follows
-instantly — it watches Claude Code's config file for changes, no polling, no
-restart. Each account keeps its own remembered state, so switching back shows
-correct numbers immediately.
-
-### Alerts
-
-Native macOS notifications, no setup:
-
-- **Saturation** — a window crosses 90%: time to think about pacing or
-  switching accounts. Fires once, re-arms only after usage drops back down.
-- **Quota freed** — a window that was ≥ 80% just reset: you're good to go
-  again. Precise to the second: Claudometer schedules the notification on the
-  known reset time instead of waiting for the next poll.
-
-Notifications are deliberately quiet: nothing fires for resets that happened
-while your Mac was asleep or hours ago — stale news is no news.
-
-### Honest when data ages
-
-Claude Code's session token expires after a few hours without activity.
-Claudometer never refreshes it (see below), so when the token is stale it
-shows the last known value with its age instead of an error:
-
-```
-5h 46% · 7d 12% (23m)
-```
-
-The `(23m)` tells you how old the number is. Stale doesn't mean useless — if
-this machine is your only Claude surface, usage barely moves while you're
-idle. But quotas are account-wide (claude.ai, mobile, another machine), and a
-reset can happen while you're away, so Claudometer also tries to shorten
-these stale periods: on an expired token it nudges Claude Code's own auth
-machinery (`claude auth status` — 0.2s, no quota consumed) to trigger a
-legitimate refresh, then polls again. The moment a fresh token exists, live
-numbers are back.
-
-### Missed-reset reconciliation
-
-Quota reset at 3am while the lid was closed? On wake, the display updates
-silently — no avalanche of outdated notifications after a weekend away.
-
-### Update notice
-
-Once a day Claudometer checks the latest GitHub release (public API, no
-tracking) and shows an "Update available" menu item linking to the release
-page when a newer version exists. No auto-update — an unsigned app can't
-replace itself gracefully, so updating stays a two-click affair.
-
-### Launch at Login
-
-Tick "Launch at Login" in the menu and Claudometer starts with your session
-(native `SMAppService` — it also shows up in System Settings → General →
-Login Items, so you stay in control).
+Claudometer tracks the 5-hour and 7-day rate-limit windows of your Claude
+account, warns you before you hit a limit, and tells you the moment a
+saturated quota frees up. No login, no configuration: if Claude Code works in
+your terminal, Claudometer works in your menu bar.
 
 ## Install
 
-### From a release
+1. Download `Claudometer-x.y.z.zip` from the
+   [latest release](https://github.com/jbouchery/claudometer/releases/latest)
+   and unzip it.
+2. Move `Claudometer.app` to `/Applications`.
+3. **First launch: right-click `Claudometer.app` → Open → Open.**
 
-Grab `Claudometer-x.y.z.zip` from the
-[latest release](https://github.com/jbouchery/claudometer/releases/latest),
-unzip, move `Claudometer.app` to `/Applications`, open it.
 
-The app is ad-hoc signed but not notarized (no paid Apple Developer
-account), so the first launch needs: right-click → Open (once), or
-`xattr -d com.apple.quarantine /Applications/Claudometer.app`.
+> ⚠️ Step 3 is not optional. The app is not notarized by Apple, so a normal
+> double-click shows *"Claudometer can't be opened"* with no way forward.
+> Right-click → Open (needed once) is what unlocks it. Terminal alternative:
+> `xattr -d com.apple.quarantine /Applications/Claudometer.app`
 
-### From source
+That's it — the gauge appears in your menu bar, already tracking whichever
+account is logged in to Claude Code. Optional: tick "Launch at Login" in the
+menu.
 
-Requires macOS 13+ and Xcode Command Line Tools (Swift 5.9+).
+Requires macOS 13+ and a logged-in Claude Code CLI.
+
+<details>
+<summary><b>Install from source</b></summary>
+
+Requires Xcode Command Line Tools (Swift 5.9+).
 
 ```sh
 ./scripts/build-app.sh          # builds, signs (ad-hoc), zips
@@ -110,74 +46,26 @@ Install to `/Applications` before enabling Launch at Login: macOS registers
 the app by path, and the copy inside the repo is destroyed and rebuilt by
 every `build-app.sh` run.
 
-For development, `swift run Claudometer` works too (notifications and the
-login item are disabled outside a proper .app bundle). `swift run
-EvaluateCheck` runs the logic self-checks.
+</details>
 
-## How it works — and what it never does
+## What you get
 
-Claude Code keeps an OAuth session in the macOS Keychain (service
-`Claude Code-credentials`) and the active account's profile in
-`~/.claude.json`. Claudometer **reads** both, and that's the whole story:
+- **Live usage at a glance** — both rate-limit windows in the menu bar,
+  refreshed every 60s; details (reset times, account) one click away.
+- **Configurable display** (menu → Display) — one window or both, names and
+  `%` optional, down to a minimal `46`.
+- **Alerts** — native notifications when a window crosses 90%, and when a
+  saturated quota resets. Quiet by design: no stale 3am notifications.
+- **Follows your account** — `/login` switches are picked up instantly.
+- **Honest when data ages** — a stale number shows its age (`(23m)`) instead
+  of pretending to be live.
+- **Update notice** — checks the latest release daily; updating stays a
+  two-click affair.
+- **Read-only by design** — never logs in, never refreshes or writes tokens,
+  never stores anything sensitive.
 
-```mermaid
-flowchart LR
-    subgraph owned["Owned by Claude Code"]
-        CC["claude CLI<br/>(login, token refresh)"]
-        KC["macOS Keychain<br/>access token"]
-        CJ["~/.claude.json<br/>active account"]
-    end
-
-    subgraph cm["Claudometer (read-only)"]
-        POLL["Poll usage<br/>every 60s"]
-        BAR["Menu bar<br/>5h 46% · 7d 12%"]
-        NOTIF["Notifications<br/>saturation / quota freed"]
-    end
-
-    API["api.anthropic.com<br/>/api/oauth/usage"]
-
-    CC -- writes --> KC
-    CC -- writes --> CJ
-    KC -- read token --> POLL
-    CJ -- "file watcher:<br/>account switch" --> POLL
-    POLL -- Bearer token --> API
-    API -- "utilization + resets_at" --> POLL
-    POLL --> BAR
-    POLL --> NOTIF
-    POLL -. "401 → nudge:<br/>claude auth status" .-> CC
-```
-
-The one dashed arrow is the only thing Claudometer ever "does" to Claude
-Code: on an expired token it runs `claude auth status`, so any refresh (and
-the token rotation that comes with it) is performed by Claude Code itself.
-
-- **Never runs a login flow** — no credentials asked, no OAuth client of its
-  own.
-- **Never refreshes or writes tokens** — Anthropic rotates refresh tokens, so
-  a refresh from a second client would log Claude Code itself out. Token
-  refresh is Claude Code's job; at most Claudometer asks it to do that job
-  via `claude auth status`.
-- **Never stores anything sensitive** — only last-seen usage percentages and
-  reset times, in the app's own UserDefaults.
-- **Single account by design** — it tracks whichever account is active in
-  Claude Code. Multi-account monitoring would require Claudometer to hold its
-  own tokens, which Anthropic's credential-use policy prohibits for
-  third-party tools.
-
-Usage numbers come from `https://api.anthropic.com/api/oauth/usage`, the same
-endpoint the `claude` CLI calls internally. This is an undocumented,
-reverse-engineered API — Anthropic could change or remove it at any time.
-
-## Limitations, stated plainly
-
-- Numbers refresh live only while a fresh Claude Code token exists. Idle for
-  hours → last known value with its age; usage from other surfaces
-  (claude.ai, mobile, another machine) is invisible during that gap. The
-  `claude auth status` nudge shortens these gaps but depends on the CLI
-  agreeing to refresh.
-- One account at a time — the one active in your terminal.
-- Unofficial API: a breaking change on Anthropic's side breaks the meter
-  until updated.
+Want the details — architecture, what the app never does, and its known
+limits? Read **[docs/how-it-works.md](docs/how-it-works.md)**.
 
 ## License
 
