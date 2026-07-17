@@ -68,6 +68,11 @@ without the `%` symbol — down to a minimal `46`. A `!` marks a saturated
 window in every format, and a hidden window forces its way back into the menu
 bar (with its name) when it saturates, so you can't miss it.
 
+The reset countdown can be shown next to each window ("Time until reset"):
+as remaining time (`5h:46%→2h13m`) or as the reset's clock time
+(`5h:46%→Fri 19:59`). The menu details always show both the reset time and
+the remaining time.
+
 ### Follows your active account
 
 Switch accounts with `/login` in any terminal and Claudometer follows
@@ -84,10 +89,16 @@ Native macOS notifications, no setup:
 - **Quota freed** — a window that was ≥ 80% just reset: you're good to go
   again. Precise to the second: Claudometer schedules the notification on the
   known reset time instead of waiting for the next poll.
+- **Early reset** — Anthropic reset the window well before its scheduled
+  time (goodwill/incident resets). Fires whatever the window's level was: an
+  unexpected fresh quota is worth knowing about even at 40%.
 
 Notifications are deliberately quiet: nothing fires for resets that happened
 while your Mac was asleep or hours ago — stale news is no news. On wake, the
 display reconciles silently.
+
+Help → "Send Test Notification" verifies the notification pipeline end to
+end (permission + banner display) without waiting for a real alert.
 
 ### Honest when data ages
 

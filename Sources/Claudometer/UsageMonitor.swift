@@ -73,8 +73,8 @@ enum ClaudeCredentials {
 final class UsageMonitor: ObservableObject {
     @Published var menuBarText = "5h – · 7d –"
     @Published var accountLabel: String?
-    @Published var fiveHourDetail = "–"
-    @Published var sevenDayDetail = "–"
+    @Published var fiveHourLine = "–"
+    @Published var sevenDayLine = "–"
     @Published var errorMessage: String?
     enum WindowChoice: String, CaseIterable {
         case both, fiveHour, sevenDay
@@ -98,6 +98,21 @@ final class UsageMonitor: ObservableObject {
     }
     @Published var windowChoice = WindowChoice(rawValue: UserDefaults.standard.string(forKey: "windowChoice") ?? "") ?? .both {
         didSet { UserDefaults.standard.set(windowChoice.rawValue, forKey: "windowChoice"); applyDisplay(now: Date()) }
+    }
+    enum CountdownStyle: String, CaseIterable {
+        case off, remaining, clock
+
+        var label: String {
+            switch self {
+            case .off: return "Off"
+            case .remaining: return "Remaining (2h13m)"
+            case .clock: return "Time (Fri 19:59)"
+            }
+        }
+    }
+
+    @Published var countdownStyle = CountdownStyle(rawValue: UserDefaults.standard.string(forKey: "countdownStyle") ?? "") ?? .off {
+        didSet { UserDefaults.standard.set(countdownStyle.rawValue, forKey: "countdownStyle"); applyDisplay(now: Date()) }
     }
 
     private var usageTimer: Timer?
@@ -226,15 +241,15 @@ final class UsageMonitor: ObservableObject {
         guard accountUuid != nil else {
             errorMessage = "No Claude Code login detected -- run `claude` in a terminal"
             menuBarText = renderPlaceholder()
-            fiveHourDetail = "–"
-            sevenDayDetail = "–"
+            fiveHourLine = "–"
+            sevenDayLine = "–"
             return
         }
         guard state.fiveHour != nil || state.sevenDay != nil else {
             errorMessage = "Waiting for an active Claude Code session"
             menuBarText = renderPlaceholder()
-            fiveHourDetail = "–"
-            sevenDayDetail = "–"
+            fiveHourLine = "–"
+            sevenDayLine = "–"
             return
         }
 
@@ -249,36 +264,70 @@ final class UsageMonitor: ObservableObject {
 
         var parts: [String] = []
         if windowChoice != .sevenDay {
-            parts.append(render(pct: fivePct, label: "5h", saturated: saturated5, forceLabel: false))
+            parts.append(render(pct: fivePct, window: .fiveHour, saturated: saturated5, forceLabel: false, now: now))
         }
         if windowChoice != .fiveHour {
-            parts.append(render(pct: weekPct, label: "7d", saturated: saturated7, forceLabel: false))
+            parts.append(render(pct: weekPct, window: .sevenDay, saturated: saturated7, forceLabel: false, now: now))
         }
         // A hidden window forces its way back in when saturated (always labelled so the
         // intrusion is readable) -- otherwise its only trace would be the one-shot notification.
         if windowChoice == .fiveHour, saturated7 {
-            parts.append(render(pct: weekPct, label: "7d", saturated: true, forceLabel: true))
+            parts.append(render(pct: weekPct, window: .sevenDay, saturated: true, forceLabel: true, now: now))
         }
         if windowChoice == .sevenDay, saturated5 {
-            parts.insert(render(pct: fivePct, label: "5h", saturated: true, forceLabel: true), at: 0)
+            parts.insert(render(pct: fivePct, window: .fiveHour, saturated: true, forceLabel: true, now: now), at: 0)
         }
 
         let ageSuffix = stale ? " (\(age(now: now)))" : ""
         menuBarText = parts.joined(separator: " · ") + ageSuffix
-        fiveHourDetail = "\(Int(fivePct))% (resets \(formatted(state.fiveHour?.resetsAt)))\(stalenessSuffix(now: now))"
-        sevenDayDetail = "\(Int(weekPct))% (resets \(formatted(state.sevenDay?.resetsAt)))"
+
+        fiveHourLine = "5h usage: \(Int(fivePct))% · \(resetLine(state.fiveHour?.resetsAt, now: now))\(stalenessSuffix(now: now))"
+        sevenDayLine = "7d usage: \(Int(weekPct))% · \(resetLine(state.sevenDay?.resetsAt, now: now))"
     }
 
-    private func render(pct: Double, label: String, saturated: Bool, forceLabel: Bool) -> String {
-        let prefix = (showLabels || forceLabel) ? "\(label) " : ""
+    /// "resets 14:59 · in 2h13m" -- either half is omitted when the reset time is unknown/past.
+    private func resetLine(_ resetsAt: Date?, now: Date) -> String {
+        guard let resetsAt else { return "resets ?" }
+        var line = "resets \(formatted(resetsAt))"
+        if let remaining = countdown(to: resetsAt, now: now) {
+            line += " · in \(remaining)"
+        }
+        return line
+    }
+
+    private func render(pct: Double, window: Window, saturated: Bool, forceLabel: Bool, now: Date) -> String {
+        let label = window == .fiveHour ? "5h" : "7d"
         let suffix = showPercent ? "%" : ""
-        return "\(prefix)\(Int(pct))\(suffix)\(saturated ? "!" : "")"
+        // "5h:46%", optionally extended with the reset countdown: "5h:46%→2h13m" or
+        // "5h:46%→Fri 19:59".
+        var trailer = ""
+        let resetsAt = window == .fiveHour ? state.fiveHour?.resetsAt : state.sevenDay?.resetsAt
+        switch countdownStyle {
+        case .off:
+            break
+        case .remaining:
+            if let remaining = countdown(to: resetsAt, now: now) { trailer = "→\(remaining)" }
+        case .clock:
+            if let resetsAt, resetsAt > now { trailer = "→\(formatted(resetsAt))" }
+        }
+        let prefix = (showLabels || forceLabel) ? "\(label):" : ""
+        return "\(prefix)\(Int(pct))\(suffix)\(saturated ? "!" : "")\(trailer)"
+    }
+
+    /// Compact time remaining before a reset: "42m", "2h13m", "6d21h". Nil if unknown or past.
+    private func countdown(to resetsAt: Date?, now: Date) -> String? {
+        guard let resetsAt, resetsAt > now else { return nil }
+        let minutes = max(1, Int(resetsAt.timeIntervalSince(now) / 60))
+        if minutes < 60 { return "\(minutes)m" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours)h\(String(format: "%02d", minutes % 60))m" }
+        return "\(hours / 24)d\(hours % 24)h"
     }
 
     private func renderPlaceholder() -> String {
         var parts: [String] = []
-        if windowChoice != .sevenDay { parts.append(showLabels ? "5h –" : "–") }
-        if windowChoice != .fiveHour { parts.append(showLabels ? "7d –" : "–") }
+        if windowChoice != .sevenDay { parts.append(showLabels ? "5h:–" : "–") }
+        if windowChoice != .fiveHour { parts.append(showLabels ? "7d:–" : "–") }
         return parts.joined(separator: " · ")
     }
 

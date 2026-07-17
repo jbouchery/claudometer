@@ -54,6 +54,51 @@ do {
     assert(result.alerts == [])
 }
 
+// A reset observed well before the scheduled resetsAt (utilization dropping) is an
+// Anthropic-initiated early reset -- alerts even without prior saturation.
+do {
+    let scheduledReset = t0.addingTimeInterval(3 * 3600)  // still 3h away
+    let previous = AccountState(
+        fiveHour: PersistedQuota(utilization: 40, resetsAt: scheduledReset, saturationAlerted: false),
+        sevenDay: nil,
+        lastPolledAt: t0.addingTimeInterval(-60)
+    )
+    let result = evaluate(previous: previous, observation: obs(0, t0.addingTimeInterval(5 * 3600)), now: t0)
+
+    assert(result.alerts == [Alert(window: .fiveHour, kind: .earlyReset)])
+    assert(result.state.fiveHour?.utilization == 0)
+}
+
+// Switching back to an account whose persisted resetsAt is stale while its live usage is
+// saturated: the reset branch must still fire the saturation alert (regression: it was
+// silently swallowed, leaving utilization=100 / saturationAlerted=false persisted).
+do {
+    let staleReset = t0.addingTimeInterval(-2 * 24 * 3600)  // persisted state from days ago
+    let previous = AccountState(
+        fiveHour: PersistedQuota(utilization: 30, resetsAt: staleReset, saturationAlerted: false),
+        sevenDay: nil,
+        lastPolledAt: t0.addingTimeInterval(-2 * 24 * 3600)
+    )
+    let result = evaluate(previous: previous, observation: obs(100, t0.addingTimeInterval(3600)), now: t0)
+
+    assert(result.alerts == [Alert(window: .fiveHour, kind: .saturation)],
+           "saturated observation arriving through the reset branch must alert (no stale freed alert either)")
+    assert(result.state.fiveHour?.saturationAlerted == true)
+}
+
+// Just before the scheduled reset (inside the margin), a new resetsAt is the normal
+// scheduled rollover -- no early-reset alert, freed rules apply instead.
+do {
+    let scheduledReset = t0.addingTimeInterval(60)  // 1 min away, inside the margin
+    let previous = AccountState(
+        fiveHour: PersistedQuota(utilization: 40, resetsAt: scheduledReset, saturationAlerted: false),
+        sevenDay: nil,
+        lastPolledAt: t0.addingTimeInterval(-60)
+    )
+    let result = evaluate(previous: previous, observation: obs(0, t0.addingTimeInterval(5 * 3600)), now: t0)
+    assert(result.alerts == [], "scheduled rollover must not be mistaken for an early reset")
+}
+
 // A reset missed during a long sleep updates silently, without a late notification.
 do {
     let resetTime = t0

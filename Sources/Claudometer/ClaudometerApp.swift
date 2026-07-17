@@ -17,16 +17,13 @@ struct ClaudometerApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Text("Claudometer")
+            Text(monitor.accountLabel.map { "Claudometer — \($0)" } ?? "Claudometer")
             Divider()
-            if let account = monitor.accountLabel {
-                Text("Account: \(account)")
-            }
             if let error = monitor.errorMessage {
                 Text(error)
             } else {
-                Text("5h usage: \(monitor.fiveHourDetail)")
-                Text("7d usage: \(monitor.sevenDayDetail)")
+                Text(monitor.fiveHourLine)
+                Text(monitor.sevenDayLine)
             }
             Divider()
             if let version = updater.availableVersion {
@@ -44,31 +41,39 @@ struct ClaudometerApp: App {
                 Divider()
                 Toggle("Window names (5h/7d)", isOn: $monitor.showLabels)
                 Toggle("% symbol", isOn: $monitor.showPercent)
-            }
-            // SMAppService only works from a bundled .app; hidden under `swift run`.
-            if Bundle.main.bundleIdentifier != nil {
-                Toggle("Launch at Login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { enabled in
-                        do {
-                            if enabled {
-                                try SMAppService.mainApp.register()
-                            } else {
-                                try SMAppService.mainApp.unregister()
-                            }
-                        } catch {
-                            launchAtLogin = SMAppService.mainApp.status == .enabled
-                        }
+                Picker("Time until reset", selection: $monitor.countdownStyle) {
+                    ForEach(UsageMonitor.CountdownStyle.allCases, id: \.self) { style in
+                        Text(style.label).tag(style)
                     }
+                }
+                // SMAppService only works from a bundled .app; hidden under `swift run`.
+                if Bundle.main.bundleIdentifier != nil {
+                    Divider()
+                    Toggle("Launch at Login", isOn: $launchAtLogin)
+                        .onChange(of: launchAtLogin) { enabled in
+                            do {
+                                if enabled {
+                                    try SMAppService.mainApp.register()
+                                } else {
+                                    try SMAppService.mainApp.unregister()
+                                }
+                            } catch {
+                                launchAtLogin = SMAppService.mainApp.status == .enabled
+                            }
+                        }
+                }
             }
             Menu("Help") {
                 Text(updater.availableVersion == nil
                      ? "Claudometer \(appVersion) — up to date"
                      : "Claudometer \(appVersion) — v\(updater.availableVersion!) available")
                 Divider()
-                Button("Check for updates") { updater.check() }
-                Button("Open GitHub repo") { NSWorkspace.shared.open(UpdateChecker.repoURL) }
+                Button("Check for Updates…") { updater.check() }
+                Button("Send Test Notification") { NotificationSender.sendTest() }
+                Button("Open GitHub Repo") { NSWorkspace.shared.open(UpdateChecker.repoURL) }
             }
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+            Divider()
+            Button("Quit Claudometer") { NSApplication.shared.terminate(nil) }
         } label: {
             Text(monitor.menuBarText)
                 .help("Claudometer")

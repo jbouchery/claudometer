@@ -55,6 +55,8 @@ public struct Alert: Equatable {
     public enum Kind {
         case saturation
         case freed
+        /// Anthropic reset the window before its scheduled resets_at (goodwill/incident resets).
+        case earlyReset
     }
     public var window: Window
     public var kind: Kind
@@ -76,6 +78,9 @@ public enum EvaluateConstants {
     /// Also used as the display staleness threshold -- one clock for both "should the menu
     /// bar mark data as aged" and "is a reset alert still worth firing".
     public static let freshnessWindow: TimeInterval = 120
+    /// A reset observed more than this margin before the scheduled resets_at is treated as an
+    /// early (Anthropic-initiated) reset rather than clock jitter around the scheduled one.
+    public static let earlyResetMargin: TimeInterval = 120
 }
 
 /// Pure decision core: no network, no Keychain, no timers. `now` is a parameter so every
@@ -105,8 +110,22 @@ private func evaluateWindow(
 
     // A bucket's resetsAt only ever moves forward when the window has actually reset.
     if let prev = previous, let prevResetsAt = prev.resetsAt, let newResetsAt = observed.resetsAt, newResetsAt != prevResetsAt {
-        fireFreedAlertIfFresh(window: window, wasUtilization: prev.utilization, resetHappenedAt: prevResetsAt, now: now, alerts: &alerts)
-        return PersistedQuota(utilization: observed.utilization, resetsAt: newResetsAt, saturationAlerted: false)
+        if now < prevResetsAt - EvaluateConstants.earlyResetMargin, observed.utilization < prev.utilization {
+            // Reset arrived well before schedule with utilization dropping: Anthropic reset
+            // the quota. One alert, regardless of how full the window was.
+            alerts.append(Alert(window: window, kind: .earlyReset))
+        } else {
+            fireFreedAlertIfFresh(window: window, wasUtilization: prev.utilization, resetHappenedAt: prevResetsAt, now: now, alerts: &alerts)
+        }
+        // The new observation can itself already be saturated (e.g. switching back to an
+        // account whose persisted resetsAt is stale while its live usage is at the limit) --
+        // without this check that crossing is silently swallowed.
+        var saturationAlerted = false
+        if observed.utilization >= EvaluateConstants.saturationThreshold {
+            alerts.append(Alert(window: window, kind: .saturation))
+            saturationAlerted = true
+        }
+        return PersistedQuota(utilization: observed.utilization, resetsAt: newResetsAt, saturationAlerted: saturationAlerted)
     }
 
     var saturationAlerted = previous?.saturationAlerted ?? false
