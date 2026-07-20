@@ -60,8 +60,6 @@ enum NotificationSender {
             return "\(windowLabel) quota is near its limit (90%)"
         case .freed:
             return "\(windowLabel) quota is available again"
-        case .earlyReset:
-            return "\(windowLabel) quota was reset early by Anthropic"
         }
     }
 }

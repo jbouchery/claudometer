@@ -54,8 +54,10 @@ do {
     assert(result.alerts == [])
 }
 
-// A reset observed well before the scheduled resetsAt (utilization dropping) is an
-// Anthropic-initiated early reset -- alerts even without prior saturation.
+// A reset observed well before the scheduled resetsAt -- whether it's Anthropic resetting early
+// or the window's own rolling drift, we don't try to tell them apart: no alert unless the quota
+// was actually saturated beforehand (regression: distinguishing "early" used to loop false
+// alerts on every poll for accounts drifting under a utilization ceiling).
 do {
     let scheduledReset = t0.addingTimeInterval(3 * 3600)  // still 3h away
     let previous = AccountState(
@@ -65,7 +67,7 @@ do {
     )
     let result = evaluate(previous: previous, observation: obs(0, t0.addingTimeInterval(5 * 3600)), now: t0)
 
-    assert(result.alerts == [Alert(window: .fiveHour, kind: .earlyReset)])
+    assert(result.alerts == [], "not saturated before the reset -- no alert, early or not")
     assert(result.state.fiveHour?.utilization == 0)
 }
 
@@ -86,17 +88,16 @@ do {
     assert(result.state.fiveHour?.saturationAlerted == true)
 }
 
-// Just before the scheduled reset (inside the margin), a new resetsAt is the normal
-// scheduled rollover -- no early-reset alert, freed rules apply instead.
+// A scheduled rollover, same freed rule: no alert since utilization wasn't saturated before it.
 do {
-    let scheduledReset = t0.addingTimeInterval(60)  // 1 min away, inside the margin
+    let scheduledReset = t0.addingTimeInterval(60)  // 1 min away
     let previous = AccountState(
         fiveHour: PersistedQuota(utilization: 40, resetsAt: scheduledReset, saturationAlerted: false),
         sevenDay: nil,
         lastPolledAt: t0.addingTimeInterval(-60)
     )
     let result = evaluate(previous: previous, observation: obs(0, t0.addingTimeInterval(5 * 3600)), now: t0)
-    assert(result.alerts == [], "scheduled rollover must not be mistaken for an early reset")
+    assert(result.alerts == [])
 }
 
 // A reset missed during a long sleep updates silently, without a late notification.

@@ -87,11 +87,10 @@ Native macOS notifications, no setup:
 - **Saturation** — a window crosses 90%: time to think about pacing or
   switching accounts. Fires once, re-arms only after usage drops back down.
 - **Quota freed** — a window that was ≥ 80% just reset: you're good to go
-  again. Precise to the second: Claudometer schedules the notification on the
-  known reset time instead of waiting for the next poll.
-- **Early reset** — Anthropic reset the window well before its scheduled
-  time (goodwill/incident resets). Fires whatever the window's level was: an
-  unexpected fresh quota is worth knowing about even at 40%.
+  again, whether that's the scheduled 5h/7d rollover or Anthropic resetting it
+  early (goodwill/incident resets) -- treated the same either way. Precise to
+  the second: Claudometer schedules the notification on the known reset time
+  instead of waiting for the next poll.
 
 Notifications are deliberately quiet: nothing fires for resets that happened
 while your Mac was asleep or hours ago — stale news is no news. On wake, the
